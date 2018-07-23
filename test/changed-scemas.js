@@ -30,6 +30,6 @@ module.exports = {
     status: '1b',
     reserved: '1b',
     token: '16b',
-    someOtherToken: "64b"
+    someOtherToken: '64b'
   },
-}
+};
