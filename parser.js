@@ -47,9 +47,9 @@ Parser.prototype.parseSchema = function(schema) {
 };
 
 Parser.prototype.buildSchemasIndex = function(schemas) {
-  const entries = Object.entries(schemas); // TODO: entries value name
+  const schemasEntries = Object.entries(schemas);
 
-  schemas = entries.map(([name, schema]) => {
+  schemas = schemasEntries.map(([name, schema]) => {
     this.parseSchema(schema);
     this.latest.set(name, DEFAULT_VERSION);
 
@@ -145,7 +145,7 @@ Parser.prototype.use = function(
   schemaName,
   version = LATEST
 ) {
-  const schema = this.getSchema(schemaName, version);
+  const schema = [schemaName, version];
   this.currentSchema = schema;
 };
 
@@ -157,14 +157,14 @@ Parser.prototype.parse = function(
   let schema = null;
 
   if (!schemaName) {
-    schema = this.currentSchema;
+    schema = this.getSchema(...this.currentSchema);
   } else {
-    // TODO: if (!version) {...}
     schema = this.getSchema(schemaName, version);
   }
 
-  return data instanceof Buffer ? this._parseBuffer(schema, data) :
-    this._parseObject(schema, data);
+  return data instanceof Buffer
+    ? this._parseBuffer(schema, data)
+    : this._parseObject(schema, data);
 };
 
 Parser.prototype._parseBuffer = function(
@@ -178,9 +178,8 @@ Parser.prototype._parseBuffer = function(
     const size = schema[field];
 
     if (typeof size === 'function') {
-      // TODO: we can do it in Parser.prototype.parseSchema
       const fn = size;
-      const len = fn(obj); // FIXME: may not be a number (parse)
+      const len = fn(obj);
       const data = buffer.slice(offset, offset + len); // TODO: len < INT_32
       obj[field] = data.toString();
       offset += len;
@@ -258,4 +257,51 @@ Parser.prototype.getVersions = function(
     version => version !== 'latest'
   );
   return versionsArray;
-}
+};
+
+Parser.prototype.deleteSchema = function(
+  schemaName,
+  versions
+) {
+  const schema = this.schemas.get(schemaName);
+  const latestVersion = this.latest.get(schemaName);
+  if (!versions) {
+    this.latest.delete(schemaName);
+    this.schemas.delete(schemaName);
+    if (this.currentSchema[0] === schemaName) {
+      this.currentSchema = null;
+    }
+  } else if (versions instanceof Array) {
+    for (const version in versions) {
+      if (!schema.has(version)) {
+        throw new Error(`Unknown version ${version}`);
+      }
+      schema.delete(version);
+      if (latestVersion === version) {
+        this.latest.set(schemaName, DEFAULT_VERSION);
+        // TODO: how we can discover the correct latest version now?
+      }
+      if (
+        this.currentSchema[0] === schemaName ||
+        this.currentSchema[1] === version
+      ) {
+        this.currentSchema = null;
+      }
+    }
+  } else {
+    if (!schema.has(versions)) {
+      throw new Error(`Unknown version ${versions}`);
+    }
+    schema.delete(versions);
+    if (latestVersion === versions) {
+      this.latest.set(schemaName, DEFAULT_VERSION);
+      // TODO: how we can discover the correct latest version now?
+    }
+    if (
+      this.currentSchema[0] === schemaName ||
+      this.currentSchema[1] === versions
+    ) {
+      this.currentSchema = null;
+    }
+  }
+};
