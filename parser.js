@@ -26,7 +26,7 @@ const updateVersion = (version, updateType) => {
 const Parser = function(schemas = {}) {
   this.latest = new Map();
   this.schemas = this.buildSchemasIndex(schemas);
-  this.currentSchema = null;
+  this.currentSchema = [];
 };
 
 module.exports = Parser;
@@ -285,7 +285,7 @@ Parser.prototype.deleteSchema = function(
         this.currentSchema[0] === schemaName ||
         this.currentSchema[1] === version
       ) {
-        this.currentSchema = null;
+        this.currentSchema = [];
       }
     }
   } else {
